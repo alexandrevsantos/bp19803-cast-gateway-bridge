@@ -1,0 +1,13 @@
+[Unit]
+Description=Apply ebtables base rules (BPDU blocking)
+After=network-pre.target
+Wants=network-pre.target
+Before=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/bridge-init-ebtables.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
