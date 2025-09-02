@@ -5,7 +5,7 @@ echo "[+] Setting up bridge server for BP19803 architecture"
 
 # 1. Netplan Configuration
 echo "[+] Creating Netplan bridge configuration"
-cat <<EOF | sudo tee /etc/netplan/01-bridge.yaml
+cat <EOF | sudo tee /etc/netplan/01-bridge.yaml
 network:
   version: 2
   renderer: networkd
@@ -55,7 +55,7 @@ sudo update-alternatives --set arptables /usr/sbin/arptables-legacy
 # 5. Enable br_netfilter + sysctl bridge hooks
 echo "[+] Enabling bridge netfilter sysctl settings"
 sudo modprobe br_netfilter
-cat <<EOF | sudo tee /etc/sysctl.d/99-bridge-nf.conf
+cat <EOF | sudo tee /etc/sysctl.d/99-bridge-nf.conf
 net.bridge.bridge-nf-call-iptables = 1
 net.bridge.bridge-nf-call-ip6tables = 0
 net.bridge.bridge-nf-call-arptables = 0
@@ -65,13 +65,13 @@ sudo sysctl --system
 # 6. Configure dnsmasq (DNS only)
 echo "[+] Configuring dnsmasq for split DNS"
 sudo systemctl stop dnsmasq
-cat <<EOF | sudo tee /etc/dnsmasq.conf
+cat <EOF | sudo tee /etc/dnsmasq.conf
 interface=lo
 bind-interfaces
 listen-address=127.0.0.1
 no-resolv
 server=8.8.8.8
-server=1.1.1.1
+server=8.8.4.4
 address=/cast.local/10.200.0.9
 address=/bridge.local/10.200.0.1
 server=/internal.example.com/10.200.0.1
@@ -81,7 +81,7 @@ sudo systemctl restart dnsmasq
 
 # 7. Create ebtables base rule script (drop BPDU)
 echo "[+] Creating ebtables base rule script"
-cat <<'EOF' | sudo tee /usr/local/sbin/bridge-init-ebtables.sh
+cat <'EOF' | sudo tee /usr/local/sbin/bridge-init-ebtables.sh
 #!/bin/bash
 ebtables -F
 ebtables -A FORWARD -p 0x0003 -j DROP
@@ -93,7 +93,7 @@ sudo chmod +x /usr/local/sbin/bridge-init-ebtables.sh
 
 # 8. Systemd unit to run ebtables at boot
 echo "[+] Installing systemd unit for ebtables setup"
-cat <<EOF | sudo tee /etc/systemd/system/bridge-ebtables.service
+cat <EOF | sudo tee /etc/systemd/system/bridge-ebtables.service
 [Unit]
 Description=Apply ebtables base rules (BPDU blocking)
 After=network-pre.target
