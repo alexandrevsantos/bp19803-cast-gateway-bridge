@@ -65,9 +65,9 @@ No conjunto, esses stages resultam em um servidor **otimizado, com footprint mí
                 +---+-------+---+
                     |       |
          -----------+       +------------
-        | eth0 (GUEST)     eth1 (CAST) |
-        |                             |
-        v                             v
+        | eth0 (GUEST)      eth1 (CAST) |
+        |                               |
+        v                               v
 
    Guest network                 Cast network
    192.168.12.0/22               192.168.12.0/22
