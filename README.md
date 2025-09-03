@@ -44,6 +44,10 @@ Este repositório contém scripts de inicialização em etapas, responsáveis po
     - Permite ARP.  
     - Controla tráfego entre *guest* e *cast* via conjunto `room_pairs` de pares IP autorizados.  
     - Aplica isolamento entre hosts não autorizados.  
+  - Fornece ferramentas administrativas:  
+    * `add-room <guest_ip> <cast_ip>` – adiciona par autorizado.  
+    * `del-room <guest_ip> <cast_ip>` – remove par.  
+    * `list-room` – lista os pares ativos.  
 
 No conjunto, esses stages resultam em um servidor **otimizado, com footprint mínimo, bridge configurada, DNS local resolvendo nomes internos e externos, e firewall de camada 2/3 implementado com nftables**.
 
