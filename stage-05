@@ -5,12 +5,7 @@ modprobe nf_conntrack
 
 mkdir -p /etc/nftables.d/
 cat > /etc/nftables.conf <<-EOF
-#!/usr/sbin/nft -f
-flush ruleset
-include "/etc/nftables.d/*.nft"
-EOF
 
-cat > /etc/nftables.d/10-host-firewall.nft <<EOF
 table inet filter {
   chain input {
     type filter hook input priority 0;
@@ -27,7 +22,7 @@ table inet filter {
     ip6 nexthdr icmpv6 accept
 
     # (opcional) SSH de rede de gestão
-    tcp dport 22 ip saddr 192.168.12.0/22 accept
+    tcp dport 22 ip saddr 192.168.12.0/22 ct state new accept
 
     # (opcional) log antes do drop
     # log prefix "NFT DROP IN: " flags all
@@ -49,6 +44,7 @@ cat > /etc/nftables.d/20-bridge-policy.nft <<EOF
 define IF_GUEST = "eth0"
 define IF_CAST  = "eth1"
 define SUB22    = 192.168.12.0/22
+define MARK_M1  = 0x00000016
 
 table bridge filter {
   # pares autorizados (guest_ip . cast_ip)
@@ -67,13 +63,20 @@ table bridge filter {
 
     # ARP sempre permitido (descoberta)
     ether type arp accept
+
+
+    # SSH no /22: aceita qualquer pacote cujo FLUXO ORIGINAL tenha destino porta 22/TCP
+#   ether type ip tcp dport 22 ip saddr \$SUB22 ip daddr \$SUB22 accept
+#   ether type ip tcp sport 22 ip saddr \$SUB22 ip daddr \$SUB22 accept
+    ether type ip tcp dport 22 ct state new ct mark set (ct mark | \$MARK_M1) accept
+    ether type ip ct mark & \$MARK_M1 != 0 accept
     
     # Casting inicia conexões IPv4 livremente
     iifname \$IF_CAST ether type ip ct state new accept
 
     # se o fluxo foi iniciado guest->cast (ct original saddr . daddr) e o par NÃO está no room_pairs, derruba mesmo se established
-    iifname \$IF_CAST  oifname \$IF_GUEST ether type ip ct state established,related ct direction reply    ct original ip saddr . ct original ip daddr != @room_pairs drop
-    iifname \$IF_GUEST oifname \$IF_CAST  ether type ip ct state established,related ct direction original ct original ip saddr . ct original ip daddr != @room_pairs drop
+    iifname \$IF_CAST  oifname \$IF_GUEST  ether type ip ct state established,related ct direction reply    ct original ip saddr . ct original ip daddr != @room_pairs drop
+    iifname \$IF_GUEST oifname \$IF_CAST   ether type ip ct state established,related ct direction original ct original ip saddr . ct original ip daddr != @room_pairs drop
 
 
     # Stateful (conntrack)
@@ -83,7 +86,7 @@ table bridge filter {
     iifname \$IF_GUEST oifname \$IF_CAST ip saddr . ip daddr @room_pairs ct state new accept
 
     # Bloqueio padrão guest -> cast dentro do /22
-    iifname \$IF_GUEST oifname \$IF_CAST ip saddr \$SUB22 ip daddr \$SUB22 drop
+    iifname \$IF_GUEST oifname \$IF_CAST ip saddr \$SUB22 ip daddr \$SUB22 ct state new drop
   }
 }
 EOF
