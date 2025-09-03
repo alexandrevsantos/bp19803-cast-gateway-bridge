@@ -88,4 +88,18 @@ table bridge filter {
 }
 EOF
 
+cat > add-room <<EOF
+nft add element bridge filter room_pairs { \$1 . \$2 }
+EOF
+
+cat > del-room <<EOF
+nft delete element bridge filter room_pairs { \$1 . \$2 }
+EOF
+
+cat > list-room <<EOF
+nft list set bridge filter room_pairs
+EOF
+
+chmod a+x add-room del-room list-room 
+install -o 0 -g 0 -m 0755 add-room del-room list-room /usr/bin/
 
