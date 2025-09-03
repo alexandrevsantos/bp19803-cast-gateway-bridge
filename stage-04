@@ -1,0 +1,16 @@
+systemctl disable --now systemd-resolved
+rm -f /etc/resolv.conf
+printf "nameserver 127.0.0.1\n" > /etc/resolv.conf
+
+cat <<EOF | tee /etc/dnsmasq.conf
+interface=lo
+bind-interfaces
+listen-address=127.0.0.1
+no-resolv
+server=8.8.8.8
+server=8.8.4.4
+address=/cast.local/192.168.13.24
+address=/bridge.local/192.168.13.24
+server=/internal.example.com/192.168.13.24
+EOF
+systemctl enable --now dnsmasq

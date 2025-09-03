@@ -1,0 +1,17 @@
+# 3. Disable UFW
+echo "[+] Removing UFW firewall"
+sudo systemctl stop ufw || true
+sudo apt -y remove ufw  || true
+
+# 4. Install legacy iptables + ebtables
+echo "[+] Installing iptables, ebtables, dnsmasq"
+sudo apt update
+sudo apt -y install dnsmasq
+sudo apt -y install tcpdump
+sudo apt -y install iputils-ping
+sudo apt -y install arping
+sudo apt -y install conntrack
+sudo apt -y install tmux
+sudo apt -y install nftables
+
+

@@ -1,0 +1,92 @@
+# nftables setup
+echo "[+] Enabling nftables"
+printf "nf_conntrack\n" > /etc/modules-load.d/nf_conntrack.conf
+modprobe nf_conntrack
+
+mkdir -p /etc/nftables.d/
+cat <<-EOF | tee /etc/nftables.conf
+#!/usr/sbin/nft -f
+flush ruleset
+include "/etc/nftables.d/*.nft"
+EOF
+
+cat <<EOF | tee /etc/nftables.d/10-host-firewall.nft
+table inet filter {
+  chain input {
+    type filter hook input priority 0;
+    policy drop;
+
+    # tráfego já estabelecido/relacionado
+    ct state established,related accept
+
+    # loopback
+    iif "lo" accept
+
+    # ICMP/ICMPv6 para troubleshooting (opcional)
+    ip protocol icmp accept
+    ip6 nexthdr icmpv6 accept
+
+    # (opcional) SSH de rede de gestão
+    tcp dport 22 ip saddr 192.168.12.0/22 accept
+
+    # (opcional) log antes do drop
+    # log prefix "NFT DROP IN: " flags all
+  }
+
+  chain forward {
+    type filter hook forward priority 0;
+    policy drop;
+  }
+
+  chain output {
+    type filter hook output priority 0;
+    policy accept;
+  }
+}
+EOF
+
+cat <<EOF | tee /etc/nftables.d/20-bridge-policy.nft
+define IF_GUEST = "eth0"
+define IF_CAST  = "eth1"
+define SUB22    = 192.168.12.0/22
+
+table bridge filter {
+  # pares autorizados (guest_ip . cast_ip)
+  set room_pairs {
+    type ipv4_addr . ipv4_addr
+  }
+
+  chain forward {
+    type filter hook forward priority 0;
+    policy drop;
+
+    # L2 de controle que não deve circular
+    ether daddr 01:80:c2:00:00:00 drop   # STP BPDU
+    ether daddr 01:80:c2:00:00:03 drop   # 802.1X / EAPOL
+    ether daddr 01:80:c2:00:00:0e drop   # LLDP
+
+    # ARP sempre permitido (descoberta)
+    ether type arp accept
+    
+    # Casting inicia conexões IPv4 livremente
+    iifname $IF_CAST ether type ip ct state new accept
+
+    # se o fluxo foi iniciado guest->cast (ct original saddr . daddr) e o par NÃO está no room_pairs, derruba mesmo se established
+    iifname $IF_CAST  oifname $IF_GUEST ether type ip ct state established,related ct direction reply    ct original ip saddr . ct original ip daddr != @room_pairs drop
+    iifname $IF_GUEST oifname $IF_CAST  ether type ip ct state established,related ct direction original ct original ip saddr . ct original ip daddr != @room_pairs drop
+
+
+    # Stateful (conntrack)
+    ct state established,related accept
+
+    # Exceções por quarto (guest -> cast), somente NEW
+    iifname $IF_GUEST oifname $IF_CAST ip saddr . ip daddr @room_pairs ct state new accept
+
+    # Bloqueio padrão guest -> cast dentro do /22
+    iifname $IF_GUEST oifname $IF_CAST ip saddr $SUB22 ip daddr $SUB22 drop
+  }
+}
+EOF
+
+
+
