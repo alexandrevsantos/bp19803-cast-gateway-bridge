@@ -4,13 +4,13 @@ printf "nf_conntrack\n" > /etc/modules-load.d/nf_conntrack.conf
 modprobe nf_conntrack
 
 mkdir -p /etc/nftables.d/
-cat <<-EOF | tee /etc/nftables.conf
+cat > /etc/nftables.conf <<-EOF
 #!/usr/sbin/nft -f
 flush ruleset
 include "/etc/nftables.d/*.nft"
 EOF
 
-cat <<EOF | tee /etc/nftables.d/10-host-firewall.nft
+cat > /etc/nftables.d/10-host-firewall.nft <<EOF
 table inet filter {
   chain input {
     type filter hook input priority 0;
@@ -45,7 +45,7 @@ table inet filter {
 }
 EOF
 
-cat <<EOF | tee /etc/nftables.d/20-bridge-policy.nft
+cat > /etc/nftables.d/20-bridge-policy.nft <<EOF
 define IF_GUEST = "eth0"
 define IF_CAST  = "eth1"
 define SUB22    = 192.168.12.0/22
@@ -69,24 +69,23 @@ table bridge filter {
     ether type arp accept
     
     # Casting inicia conexões IPv4 livremente
-    iifname $IF_CAST ether type ip ct state new accept
+    iifname \$IF_CAST ether type ip ct state new accept
 
     # se o fluxo foi iniciado guest->cast (ct original saddr . daddr) e o par NÃO está no room_pairs, derruba mesmo se established
-    iifname $IF_CAST  oifname $IF_GUEST ether type ip ct state established,related ct direction reply    ct original ip saddr . ct original ip daddr != @room_pairs drop
-    iifname $IF_GUEST oifname $IF_CAST  ether type ip ct state established,related ct direction original ct original ip saddr . ct original ip daddr != @room_pairs drop
+    iifname \$IF_CAST  oifname \$IF_GUEST ether type ip ct state established,related ct direction reply    ct original ip saddr . ct original ip daddr != @room_pairs drop
+    iifname \$IF_GUEST oifname \$IF_CAST  ether type ip ct state established,related ct direction original ct original ip saddr . ct original ip daddr != @room_pairs drop
 
 
     # Stateful (conntrack)
     ct state established,related accept
 
     # Exceções por quarto (guest -> cast), somente NEW
-    iifname $IF_GUEST oifname $IF_CAST ip saddr . ip daddr @room_pairs ct state new accept
+    iifname \$IF_GUEST oifname \$IF_CAST ip saddr . ip daddr @room_pairs ct state new accept
 
     # Bloqueio padrão guest -> cast dentro do /22
-    iifname $IF_GUEST oifname $IF_CAST ip saddr $SUB22 ip daddr $SUB22 drop
+    iifname \$IF_GUEST oifname \$IF_CAST ip saddr \$SUB22 ip daddr \$SUB22 drop
   }
 }
 EOF
-
 
 
