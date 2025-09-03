@@ -35,6 +35,7 @@ echo "[+] Setting up bridge server for BP19803 architecture"
 
 # 1. Netplan Configuration
 echo "[+] Creating Netplan bridge configuration"
+rm -- /etc/netplan/50-cloud-init.yaml
 cat <<EOF | sudo tee /etc/netplan/01-bridge.yaml
 network:
   version: 2
@@ -55,7 +56,7 @@ network:
       dhcp4: no
       dhcp6: no
       addresses:
-        - 192.168.13.24/22
+        - 192.168.13.25/22
       routes:
         - to: 0.0.0.0/0
           via: 192.168.15.1
